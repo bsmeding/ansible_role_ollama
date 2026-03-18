@@ -1,0 +1,5 @@
+---
+# Run setup
+- name: Include tasks for setup
+  include_tasks: setup.yml
+  when: not ollama__skip_setup | bool

@@ -1,0 +1,132 @@
+---
+- name: Install prerequisites (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name:
+      - curl
+      - zstd
+    state: present
+    update_cache: "{{ ansible_os_family == 'Debian' }}"
+    cache_valid_time: 3600
+  become: true
+  when:
+    - ollama__install_prerequisites | bool
+    - ansible_os_family == 'Debian'
+
+- name: Install prerequisites (RHEL/Fedora)
+  ansible.builtin.dnf:
+    name:
+      - curl
+      - zstd
+    state: present
+  become: true
+  when:
+    - ollama__install_prerequisites | bool
+    - ansible_os_family == 'RedHat'
+
+- name: Install prerequisites (Arch)
+  ansible.builtin.pacman:
+    name:
+      - curl
+      - zstd
+    state: present
+  become: true
+  when:
+    - ollama__install_prerequisites | bool
+    - ansible_os_family == 'Archlinux'
+
+- name: Check if Ollama is already installed
+  ansible.builtin.command: which ollama
+  register: ollama_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install Ollama via official install script
+  ansible.builtin.shell: |
+    curl -fsSL https://ollama.com/install.sh | {{ 'OLLAMA_VERSION=' + ollama__version + ' ' if ollama__version else '' }}sh
+  environment:
+    OLLAMA_VERSION: "{{ ollama__version if ollama__version else omit }}"
+  become: true
+  when: ollama_installed.rc != 0
+
+- name: Create systemd override directory for Ollama
+  ansible.builtin.file:
+    path: /etc/systemd/system/ollama.service.d
+    state: directory
+    mode: '0755'
+  become: true
+  when: ansible_service_mgr == 'systemd'
+
+- name: Create systemd override for OLLAMA_HOST
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ollama.service.d/override.conf
+    content: |
+      [Service]
+      Environment="OLLAMA_HOST={{ ollama__host }}:{{ ollama__port }}"
+    force: true
+  become: true
+  notify: restart ollama
+  when: ansible_service_mgr == 'systemd'
+
+- name: Ensure Ollama systemd service is enabled
+  ansible.builtin.systemd:
+    name: ollama
+    enabled: "{{ ollama__enabled | bool }}"
+    daemon_reload: true
+  become: true
+  when: ansible_service_mgr == 'systemd'
+
+- name: Ensure Ollama systemd service is {{ ollama__state }}
+  ansible.builtin.systemd:
+    name: ollama
+    state: "{{ ollama__state }}"
+  become: true
+  when:
+    - ansible_service_mgr == 'systemd'
+    - ollama__state in ['started', 'stopped', 'restarted']
+
+- name: Ensure Ansible remote_tmp exists for ollama user
+  ansible.builtin.file:
+    path: /usr/share/ollama/.ansible/tmp
+    state: directory
+    owner: ollama
+    group: ollama
+    mode: '0755'
+  become: true
+  when:
+    - ollama__models | length > 0
+    - ollama__state == 'started'
+
+- name: Wait for Ollama API to be ready
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if ollama__host == '0.0.0.0' else ollama__host }}"
+    port: "{{ ollama__port }}"
+    state: started
+    timeout: 60
+  when:
+    - ollama__models | length > 0
+    - ollama__state == 'started'
+
+- name: Get installed Ollama models
+  ansible.builtin.command: ollama list
+  become: true
+  become_user: ollama
+  environment:
+    OLLAMA_HOST: "{{ ollama__host }}:{{ ollama__port }}"
+  register: ollama_installed_models
+  changed_when: false
+  when:
+    - ollama__models | length > 0
+    - ollama__state == 'started'
+
+- name: Pull Ollama models
+  ansible.builtin.command: ollama pull {{ item }}
+  become: true
+  become_user: ollama
+  environment:
+    OLLAMA_HOST: "{{ ollama__host }}:{{ ollama__port }}"
+  loop: "{{ ollama__models }}"
+  when:
+    - ollama__models | length > 0
+    - ollama__state == 'started'
+    - ollama_installed_models is defined
+    - ollama_installed_models.stdout is not search('(^|\\n)' + (item | regex_escape) + '(\\s|:)')

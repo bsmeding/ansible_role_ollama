@@ -1,0 +1,9 @@
+---
+ollama__skip_setup: false  # When true, setup is skipped
+ollama__version: ''  # Optional: pin version (e.g., '0.5.7'). Empty = latest
+ollama__install_prerequisites: true  # Install curl, zstd before running install script
+ollama__state: started  # Service state: started, stopped, restarted
+ollama__enabled: true  # Enable ollama service at boot
+ollama__host: 127.0.0.1  # Bind address (use 0.0.0.0 for remote access)
+ollama__port: 11434  # API listening port
+ollama__models: []  # Models to pull (e.g., ['llama3.2', 'mistral', 'codellama'])
