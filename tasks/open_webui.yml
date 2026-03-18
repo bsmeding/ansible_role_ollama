@@ -1,0 +1,94 @@
+---
+# Open WebUI - web interface for Ollama (pip install in user's venv)
+# Requires Python 3.11+ on the target host
+
+- name: Set Open WebUI home path
+  ansible.builtin.set_fact:
+    open_webui_home: "{{ '/root' if ollama__open_webui_user == 'root' else '/home/' + ollama__open_webui_user }}"
+
+- name: Set Open WebUI venv path
+  ansible.builtin.set_fact:
+    open_webui_venv_path: "{{ ollama__open_webui_venv_path | default(open_webui_home + '/.local/open-webui/venv') }}"
+
+- name: Ensure python3-venv is installed (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: python3-venv
+    state: present
+  become: true
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure python3-venv is installed (RHEL/Fedora)
+  ansible.builtin.dnf:
+    name: python3-pip
+    state: present
+  become: true
+  when: ansible_os_family == 'RedHat'
+
+- name: Ensure python3-venv is installed (Arch)
+  ansible.builtin.pacman:
+    name: python3
+    state: present
+  become: true
+  when: ansible_os_family == 'Archlinux'
+
+- name: Ensure Open WebUI directories exist
+  ansible.builtin.file:
+    path: "{{ open_webui_venv_path | dirname }}"
+    state: directory
+    owner: "{{ ollama__open_webui_user }}"
+    group: "{{ ollama__open_webui_user }}"
+    mode: '0755'
+  become: true
+
+- name: Find Python 3.11+ for Open WebUI
+  ansible.builtin.command: which python3.11
+  register: open_webui_python
+  changed_when: false
+  failed_when: false
+
+- name: Create Open WebUI virtual environment
+  ansible.builtin.command:
+    cmd: "{{ (open_webui_python.stdout if open_webui_python.rc == 0 else 'python3') }} -m venv {{ open_webui_venv_path }}"
+    creates: "{{ open_webui_venv_path }}/bin/activate"
+  become: true
+  become_user: "{{ ollama__open_webui_user }}"
+
+- name: Install Open WebUI in venv (from PyPI)
+  ansible.builtin.pip:
+    name: "{{ 'open-webui==' + ollama__open_webui_version if ollama__open_webui_version else 'open-webui' }}"
+    virtualenv: "{{ open_webui_venv_path }}"
+    state: present
+  become: true
+  become_user: "{{ ollama__open_webui_user }}"
+  when: not ollama__open_webui_install_from_git | default(false) | bool
+
+- name: Install Open WebUI in venv (from git)
+  ansible.builtin.pip:
+    name: "git+https://github.com/open-webui/open-webui.git"
+    virtualenv: "{{ open_webui_venv_path }}"
+    state: present
+  become: true
+  become_user: "{{ ollama__open_webui_user }}"
+  when: ollama__open_webui_install_from_git | default(false) | bool
+
+- name: Deploy Open WebUI systemd service
+  ansible.builtin.template:
+    src: open-webui.service.j2
+    dest: /etc/systemd/system/open-webui.service
+    mode: '0644'
+  become: true
+  notify: restart open-webui
+
+- name: Ensure Open WebUI service is enabled
+  ansible.builtin.systemd:
+    name: open-webui
+    enabled: "{{ ollama__open_webui_enabled | default(true) | bool }}"
+    daemon_reload: true
+  become: true
+
+- name: Ensure Open WebUI service is {{ ollama__open_webui_state | default('started') }}
+  ansible.builtin.systemd:
+    name: open-webui
+    state: "{{ ollama__open_webui_state | default('started') }}"
+  become: true
+  when: ollama__open_webui_state | default('started') in ['started', 'stopped', 'restarted']

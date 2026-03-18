@@ -6,3 +6,11 @@
     daemon_reload: true
   become: true
   when: ansible_service_mgr == 'systemd'
+
+- name: restart open-webui
+  ansible.builtin.systemd:
+    name: open-webui
+    state: restarted
+    daemon_reload: true
+  become: true
+  when: ansible_service_mgr == 'systemd'
