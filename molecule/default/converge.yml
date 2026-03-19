@@ -1,0 +1,20 @@
+---
+- name: Converge
+  hosts: all
+
+  vars:
+    ollama__install_prerequisites: true
+    ollama__state: started
+    ollama__models: []  # Skip model pull for faster tests
+    ollama__open_webui: false  # Skip Open WebUI for faster tests
+
+  pre_tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 600
+      when: ansible_facts.os_family == 'Debian'
+      changed_when: false
+
+  roles:
+    - role: ansible_role_ollama

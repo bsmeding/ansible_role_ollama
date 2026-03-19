@@ -1,5 +1,7 @@
 # Ansible Role: Ollama
 
+![test status](https://github.com/bsmeding/ansible_role_ollama/actions/workflows/ci.yml/badge.svg)
+
 This role deploys [Ollama](https://ollama.com) on a Linux server using the official installation script. Ollama runs local LLMs (Llama, Mistral, etc.) for inference.
 
 ## Requirements

@@ -1,0 +1,38 @@
+---
+- name: Verify Ollama role
+  hosts: all
+  become: true
+  tasks:
+    - name: Check Ollama is installed
+      ansible.builtin.command: which ollama
+      register: ollama_bin
+      changed_when: false
+
+    - name: Ensure ollama binary exists
+      ansible.builtin.assert:
+        that: ollama_bin.rc == 0
+        fail_msg: "ollama binary not found"
+
+    - name: Check Ollama service is running
+      ansible.builtin.command: systemctl is-active ollama
+      register: ollama_service
+      changed_when: false
+
+    - name: Ensure ollama service is active
+      ansible.builtin.assert:
+        that: ollama_service.stdout == 'active'
+        fail_msg: "ollama service is not active (got: {{ ollama_service.stdout }})"
+
+    - name: Wait for Ollama API to be ready
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 11434
+        state: started
+        timeout: 60
+
+    - name: Check Ollama API responds
+      ansible.builtin.uri:
+        url: http://127.0.0.1:11434/api/tags
+        method: GET
+      register: ollama_api
+      failed_when: ollama_api.status != 200
