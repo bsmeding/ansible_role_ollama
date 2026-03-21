@@ -7,14 +7,3 @@ ollama__enabled: true  # Enable ollama service at boot
 ollama__host: 127.0.0.1  # Bind address (use 0.0.0.0 for remote access)
 ollama__port: 11434  # API listening port
 ollama__models: []  # Models to pull (e.g., ['llama3.2', 'mistral', 'codellama'])
-
-# Open WebUI - ChatGPT-like web interface for Ollama (pip in user's venv)
-ollama__open_webui: false
-ollama__open_webui_version: "0.8.8"  # Pin version. 0.8.10 has broken ddgs dep on PyPI; use 0.8.8 or '' for latest
-# ollama__open_webui_install_from_git: false  # Set true to install from git (gets ddgs fix for 0.8.10+)
-ollama__open_webui_user: "{{ ansible_user_id | default(ansible_user) }}"  # User whose home gets the venv
-# ollama__open_webui_venv_path  # Optional: override venv path (default: ~/.local/open-webui/venv)
-ollama__open_webui_port: 8080
-ollama__open_webui_auth: true  # Set false for single-user mode (no login)
-ollama__open_webui_enabled: true
-ollama__open_webui_state: started
