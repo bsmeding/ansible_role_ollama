@@ -6,7 +6,6 @@
     ollama__install_prerequisites: true
     ollama__state: started
     ollama__models: []  # Skip model pull for faster tests
-    ollama__open_webui: false  # Skip Open WebUI for faster tests
 
   pre_tasks:
     - name: Update apt cache
@@ -17,4 +16,4 @@
       changed_when: false
 
   roles:
-    - role: ansible_role_ollama
+    - role: bsmeding.ollama

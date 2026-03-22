@@ -3,8 +3,3 @@
 - name: Include tasks for setup
   include_tasks: setup.yml
   when: not ollama__skip_setup | bool
-
-# Open WebUI (optional)
-- name: Include tasks for Open WebUI
-  include_tasks: open_webui.yml
-  when: ollama__open_webui | bool

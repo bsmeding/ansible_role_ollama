@@ -34,11 +34,22 @@
     - ollama__install_prerequisites | bool
     - ansible_os_family == 'Archlinux'
 
-- name: Check if Ollama is already installed
+- name: Check if Ollama binary exists
   ansible.builtin.command: which ollama
-  register: ollama_installed
+  register: ollama_binary_exists
   changed_when: false
   failed_when: false
+
+- name: Check if Ollama systemd service exists
+  ansible.builtin.stat:
+    path: /etc/systemd/system/ollama.service
+  register: ollama_service_exists
+  become: true
+  when: ansible_service_mgr == 'systemd'
+
+- name: Set Ollama needs install
+  ansible.builtin.set_fact:
+    ollama_needs_install: "{{ ollama_binary_exists.rc != 0 or (ollama_service_exists is defined and ollama_service_exists.stat.exists | default(false) | bool == false) }}"
 
 - name: Install Ollama via official install script
   ansible.builtin.shell: |
@@ -46,7 +57,7 @@
   environment:
     OLLAMA_VERSION: "{{ ollama__version if ollama__version else omit }}"
   become: true
-  when: ollama_installed.rc != 0
+  when: ollama_needs_install
 
 - name: Create systemd override directory for Ollama
   ansible.builtin.file:
