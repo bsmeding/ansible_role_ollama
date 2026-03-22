@@ -20,7 +20,9 @@ provisioner:
   playbooks:
     converge: ${MOLECULE_PLAYBOOK:-converge.yml}
     verify: ${MOLECULE_PLAYBOOK_VERIFY:-verify.yml}
+  env:
+    # Parent of role dir (e.g. bsmeding.ollama) so role is resolvable in CI
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.."
   config_options:
     defaults:
       remote_tmp: /tmp/.ansible
-      roles_path: ../..
