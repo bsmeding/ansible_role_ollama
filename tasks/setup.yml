@@ -5,12 +5,12 @@
       - curl
       - zstd
     state: present
-    update_cache: "{{ ansible_os_family == 'Debian' }}"
+    update_cache: "{{ ansible_facts['os_family'] == 'Debian' }}"
     cache_valid_time: 3600
   become: true
   when:
     - ollama__install_prerequisites | bool
-    - ansible_os_family == 'Debian'
+    - ansible_facts['os_family'] == 'Debian'
 
 - name: Install prerequisites (RHEL/Fedora)
   ansible.builtin.dnf:
@@ -22,9 +22,9 @@
   become: true
   when:
     - ollama__install_prerequisites | bool
-    - ansible_os_family == 'RedHat'
+    - ansible_facts['os_family'] == 'RedHat'
     # RHEL 9+ has curl-minimal; installing curl causes depsolve conflicts
-    - ansible_distribution_major_version | int < 9
+    - ansible_facts['distribution_major_version'] | int < 9
 
 - name: Install prerequisites (RHEL 9+ / Fedora 36+)
   ansible.builtin.dnf:
@@ -33,8 +33,8 @@
   become: true
   when:
     - ollama__install_prerequisites | bool
-    - ansible_os_family == 'RedHat'
-    - ansible_distribution_major_version | int >= 9
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] | int >= 9
 
 - name: Install prerequisites (Arch)
   ansible.builtin.pacman:
@@ -45,7 +45,7 @@
   become: true
   when:
     - ollama__install_prerequisites | bool
-    - ansible_os_family == 'Archlinux'
+    - ansible_facts['os_family'] == 'Archlinux'
 
 - name: Check if Ollama binary exists
   ansible.builtin.command: which ollama
@@ -58,7 +58,7 @@
     path: /etc/systemd/system/ollama.service
   register: ollama_service_exists
   become: true
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
 
 - name: Set Ollama needs install
   ansible.builtin.set_fact:
@@ -78,7 +78,7 @@
     state: directory
     mode: '0755'
   become: true
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
 
 - name: Create systemd override for OLLAMA_HOST
   ansible.builtin.copy:
@@ -89,24 +89,31 @@
     force: true
   become: true
   notify: restart ollama
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
 
+# Use systemctl CLI: ansible.builtin.systemd can fail in Docker/CI (DBus) with
+# "Could not find the requested service" even when the unit file exists.
 - name: Ensure Ollama systemd service is enabled
-  ansible.builtin.systemd:
-    name: ollama
-    enabled: "{{ ollama__enabled | bool }}"
-    daemon_reload: true
+  ansible.builtin.shell: |
+    set -e
+    systemctl daemon-reload
+    systemctl {{ 'enable' if ollama__enabled | bool else 'disable' }} ollama
   become: true
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
+  register: ollama_systemd_enable
+  changed_when: >-
+    ('created symlink' in ((ollama_systemd_enable.stdout | default('') ~ ollama_systemd_enable.stderr | default('')) | lower))
+    or ('removed' in ((ollama_systemd_enable.stdout | default('') ~ ollama_systemd_enable.stderr | default('')) | lower))
+  failed_when: ollama_systemd_enable.rc != 0
 
 - name: Ensure Ollama systemd service is {{ ollama__state }}
-  ansible.builtin.systemd:
-    name: ollama
-    state: "{{ ollama__state }}"
+  ansible.builtin.command: "systemctl {{ {'started': 'start', 'stopped': 'stop', 'restarted': 'restart'}[ollama__state] }} ollama"
   become: true
   when:
-    - ansible_service_mgr == 'systemd'
+    - ansible_facts['service_mgr'] == 'systemd'
     - ollama__state in ['started', 'stopped', 'restarted']
+  register: ollama_systemd_state
+  changed_when: false
 
 - name: Ensure Ansible remote_tmp exists for ollama user
   ansible.builtin.file:

@@ -1,8 +1,9 @@
 ---
 - name: restart ollama
-  ansible.builtin.systemd:
-    name: ollama
-    state: restarted
-    daemon_reload: true
+  ansible.builtin.shell: |
+    set -e
+    systemctl daemon-reload
+    systemctl restart ollama
   become: true
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
+  changed_when: true
