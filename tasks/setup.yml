@@ -15,13 +15,26 @@
 - name: Install prerequisites (RHEL/Fedora)
   ansible.builtin.dnf:
     name:
-      - curl
+      # curl-minimal is default on RHEL 9; full curl conflicts with it
+      - curl  # Fedora, RHEL 8 and earlier
       - zstd
     state: present
   become: true
   when:
     - ollama__install_prerequisites | bool
     - ansible_os_family == 'RedHat'
+    # RHEL 9+ has curl-minimal; installing curl causes depsolve conflicts
+    - ansible_distribution_major_version | int < 9
+
+- name: Install prerequisites (RHEL 9+ / Fedora 36+)
+  ansible.builtin.dnf:
+    name: zstd
+    state: present
+  become: true
+  when:
+    - ollama__install_prerequisites | bool
+    - ansible_os_family == 'RedHat'
+    - ansible_distribution_major_version | int >= 9
 
 - name: Install prerequisites (Arch)
   ansible.builtin.pacman:
