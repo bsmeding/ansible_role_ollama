@@ -17,11 +17,13 @@
       ansible.builtin.command: systemctl is-active ollama
       register: ollama_service
       changed_when: false
+      failed_when: false
 
     - name: Ensure ollama service is active
       ansible.builtin.assert:
-        that: ollama_service.stdout == 'active'
-        fail_msg: "ollama service is not active (got: {{ ollama_service.stdout }})"
+        that:
+          - ollama_service.stdout | trim == 'active' or ollama_service.stderr | trim == 'active'
+        fail_msg: "ollama service is not active (stdout={{ ollama_service.stdout | trim }}, stderr={{ ollama_service.stderr | trim }})"
 
     - name: Wait for Ollama API to be ready
       ansible.builtin.wait_for:

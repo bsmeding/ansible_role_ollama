@@ -115,6 +115,19 @@
   register: ollama_systemd_state
   changed_when: false
 
+- name: Wait for Ollama service to become active (systemd)
+  ansible.builtin.command: systemctl show -p ActiveState --value ollama
+  register: ollama_systemd_active_state
+  changed_when: false
+  failed_when: false
+  until: ollama_systemd_active_state.stdout | trim == 'active'
+  retries: 20
+  delay: 1
+  become: true
+  when:
+    - ansible_facts['service_mgr'] == 'systemd'
+    - ollama__state in ['started', 'restarted']
+
 - name: Ensure Ansible remote_tmp exists for ollama user
   ansible.builtin.file:
     path: /usr/share/ollama/.ansible/tmp
