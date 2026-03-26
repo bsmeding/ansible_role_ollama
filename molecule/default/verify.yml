@@ -13,18 +13,6 @@
         that: ollama_bin.rc == 0
         fail_msg: "ollama binary not found"
 
-    - name: Check Ollama API port is listening
-      ansible.builtin.command: ss -ltn '( sport = :11434 )'
-      register: ollama_port
-      changed_when: false
-      failed_when: false
-
-    - name: Ensure Ollama API port is listening
-      ansible.builtin.assert:
-        that:
-          - ollama_port.stdout is search(':11434')
-        fail_msg: "ollama API port 11434 is not listening"
-
     - name: Wait for Ollama API to be ready
       ansible.builtin.wait_for:
         host: 127.0.0.1
