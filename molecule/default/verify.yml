@@ -13,16 +13,39 @@
         that: ollama_bin.rc == 0
         fail_msg: "ollama binary not found"
 
-    - name: Wait for Ollama API to be ready
-      ansible.builtin.wait_for:
-        host: 127.0.0.1
-        port: 11434
-        state: started
-        timeout: 60
+    - name: Verify Ollama API is reachable
+      block:
+        - name: Wait for Ollama API to be ready
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: 11434
+            state: started
+            timeout: 120
 
-    - name: Check Ollama API responds
-      ansible.builtin.uri:
-        url: http://127.0.0.1:11434/api/tags
-        method: GET
-      register: ollama_api
-      failed_when: ollama_api.status != 200
+        - name: Check Ollama API responds
+          ansible.builtin.uri:
+            url: http://127.0.0.1:11434/api/tags
+            method: GET
+          register: ollama_api
+          failed_when: ollama_api.status != 200
+      rescue:
+        - name: Capture systemd status for ollama
+          ansible.builtin.command: systemctl status ollama --no-pager -l
+          register: ollama_systemd_status
+          changed_when: false
+          failed_when: false
+
+        - name: Capture recent ollama journal logs
+          ansible.builtin.command: journalctl -u ollama --no-pager -n 80
+          register: ollama_journal
+          changed_when: false
+          failed_when: false
+
+        - name: Fail with ollama diagnostics
+          ansible.builtin.fail:
+            msg: |
+              Ollama API did not become reachable on 127.0.0.1:11434.
+              systemctl status output:
+              {{ ollama_systemd_status.stdout | default('') }}
+              journalctl output:
+              {{ ollama_journal.stdout | default('') }}

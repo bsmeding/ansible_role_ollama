@@ -6,4 +6,5 @@ ollama__state: started  # Service state: started, stopped, restarted
 ollama__enabled: true  # Enable ollama service at boot
 ollama__host: 127.0.0.1  # Bind address (use 0.0.0.0 for remote access)
 ollama__port: 11434  # API listening port
+ollama__api_ready_timeout: 120  # Wait time for API/listener during startup
 ollama__models: []  # Models to pull (e.g., ['llama3.2', 'mistral', 'codellama'])
