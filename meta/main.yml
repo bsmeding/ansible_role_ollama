@@ -23,7 +23,7 @@ galaxy_info:
         - focal
         - jammy
         - noble
-    - name: Archlinux
+    - name: EL
       versions:
         - all
   galaxy_tags:
