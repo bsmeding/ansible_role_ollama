@@ -3,6 +3,10 @@
   hosts: all
 
   vars:
+    molecule_role_name: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
+    # Pin for deterministic Molecule runs across host architectures.
+    # Newer upstream "latest" builds changed artifact naming and currently break arm64 install.sh flow.
+    ollama__version: "0.13.5"
     ollama__install_prerequisites: true
     ollama__state: started
     ollama__models: []  # Skip model pull for faster tests
@@ -16,4 +20,4 @@
       changed_when: false
 
   roles:
-    - role: bsmeding.ollama
+    - role: "{{ molecule_role_name }}"
