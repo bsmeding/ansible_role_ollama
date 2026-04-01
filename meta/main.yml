@@ -5,7 +5,7 @@ galaxy_info:
   role_name: ollama
   author: bsmeding
   description: Deploy Ollama on Linux (local LLM inference server)
-  company: "b@rtsmeding.nl"
+  company: "b@rtsmeding IT"
   license: MIT
   min_ansible_version: "2.10"
   platforms:
